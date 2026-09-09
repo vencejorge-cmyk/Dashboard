@@ -4,74 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Foundever | DTR Payroll Dashboard</title>
-<script>
-/* Resilient CDN loader: tries jsDelivr first, falls back to cdnjs, then
-   unpkg. Some networks/environments block one CDN host outright, which
-   previously caused "Chart is not defined" with no explanation. Upload is
-   disabled until all three libraries are confirmed loaded; a visible
-   banner appears if a library fails from every source instead of a silent
-   console error. */
-window.__LIB_LOAD_ERRORS = [];
-window.__LIBS_READY = { chart:false, datalabels:false, xlsx:false };
-
-function loadScriptChain(urls, onSuccess, onAllFail){
-  let i = 0;
-  function tryNext(){
-    if(i >= urls.length){ onAllFail(); checkLibsStatus(); return; }
-    const url = urls[i++];
-    const s = document.createElement('script');
-    s.src = url;
-    s.onload = function(){ onSuccess(); checkLibsStatus(); };
-    s.onerror = function(){ window.__LIB_LOAD_ERRORS.push(url); tryNext(); };
-    document.head.appendChild(s);
-  }
-  tryNext();
-}
-
-function checkLibsStatus(){
-  const allReady = window.__LIBS_READY.chart && window.__LIBS_READY.datalabels && window.__LIBS_READY.xlsx;
-  const upBtn = document.getElementById('uploadBtnMain');
-  const upZone = document.getElementById('upZone');
-  if(allReady){
-    if(upBtn){ upBtn.disabled=false; upBtn.textContent='⬆ Upload File'; }
-    if(upZone){ upZone.style.opacity=''; upZone.style.pointerEvents=''; }
-    return;
-  }
-  const failedCount = ['chart','datalabels','xlsx'].filter(k => !window.__LIBS_READY[k]).length;
-  const stillTrying = window.__LIB_LOAD_ERRORS.length < failedCount * 3; // 3 sources per lib
-  if(upBtn){ upBtn.disabled=true; upBtn.textContent='⏳ Loading libraries…'; }
-  if(upZone){ upZone.style.opacity='0.5'; upZone.style.pointerEvents='none'; }
-  if(!stillTrying){
-    const banner=document.createElement('div');
-    banner.style.cssText='background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:12px 24px;font-size:13px;margin:12px 24px;border-radius:8px';
-    banner.innerHTML='⚠️ Some dashboard libraries (Chart.js / xlsx) could not load from any CDN source (jsDelivr, cdnjs, unpkg) — likely blocked by a network/firewall policy or a sandboxed preview with no external network access. '
-      + 'Try downloading this file and opening it directly in a browser with internet access, or check with IT that these domains are reachable.'
-      + '<br><span style="font-size:11px;opacity:.8">Failed: '+window.__LIB_LOAD_ERRORS.join(', ')+'</span>';
-    document.body.insertBefore(banner, document.body.firstChild);
-  }
-}
-</script>
-<script>
-loadScriptChain([
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
-  'https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js'
-], function(){ window.__LIBS_READY.chart = true; }, function(){ window.__LIB_LOAD_ERRORS.push('Chart.js: all sources failed'); });
-</script>
-<script>
-loadScriptChain([
-  'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js',
-  'https://unpkg.com/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'
-], function(){ window.__LIBS_READY.datalabels = true; }, function(){ window.__LIB_LOAD_ERRORS.push('chartjs-plugin-datalabels: all sources failed'); });
-</script>
-<script>
-loadScriptChain([
-  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
-], function(){ window.__LIBS_READY.xlsx = true; }, function(){ window.__LIB_LOAD_ERRORS.push('xlsx: all sources failed'); });
-</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 /** @license
  *
@@ -781,7 +716,7 @@ footer span{color:var(--fd-indigo);font-weight:700}
     <div class="badge" id="recBadge">No Data</div>
     <div class="badge" id="unrosterBadge" style="display:none;background:#fef3c7;border-color:#f59e0b;color:#92400e;cursor:pointer"
       title="Click to see which employees" onclick="showUnrosteredList()"></div>
-    <button class="up-btn" id="uploadBtnMain" onclick="document.getElementById('fileIn').click()">⬆ Upload File</button>
+    <button class="up-btn" onclick="document.getElementById('fileIn').click()">⬆ Upload File</button>
     <input type="file" id="fileIn" accept=".xlsx,.xls,.csv" onchange="handleUpload(event)">
   </div>
 </div>
@@ -2247,6 +2182,17 @@ function fmtN(n){
 function fmtWhole(n){
   return Math.round(n).toLocaleString('en-PH');
 }
+/* 2-decimal version for Key Performance Metrics tiles specifically. Safe to
+   use here because every KPI value already runs through autoFitKpiVal(),
+   which shrinks the font down to a 14px floor until the text fits on one
+   line — measured against this dashboard's actual font/tile-width, even an
+   8-digit peso value with 2 decimals (e.g. "₱19,162,320.45") comfortably
+   fits within a 14px render, well before hitting that floor. Chart/funnel
+   labels (which use fmtWhole, unchanged) don't have that same shrink
+   mechanism, so they're deliberately left as whole numbers. */
+function fmtWhole2(n){
+  return n.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 /* Shrinks a KPI value's font size just enough to fit on one line within its
    card, instead of letting long numbers (e.g. 7-digit peso totals) wrap
    mid-digit. Resets to the CSS default first, then steps down if needed. */
@@ -2379,15 +2325,15 @@ function renderKPIs(d){
     autoFitKpiVal(el);
     if(sub) document.getElementById(id+'Sub').textContent=sub;
   };
-  set('kTotalBilled','₱'+fmtWhole(sumF(d,'totalBilled')),d.length.toLocaleString()+' record-days');
-  set('kBase',       '₱'+fmtWhole(sumF(d,'base')),        d.length.toLocaleString()+' record-days');
-  set('kOT',         '₱'+fmtWhole(sumF(d,'otHrs')),   d.filter(r=>r.otHrs>0).length+' w/ OT');
-  set('kRdot',       '₱'+fmtWhole(sumF(d,'restOT')),  d.filter(r=>r.restOT>0).length+' rest OT');
-  set('kND',         '₱'+fmtWhole(sumF(d,'ndHrs')),   d.filter(r=>r.ndHrs>0).length+' w/ ND');
-  set('kHolR',       '₱'+fmtWhole(sumF(d,'regHol')),       holidayNameSub(d, r=>r.regHol>0));
-  set('kHolS',       '₱'+fmtWhole(sumF(d,'spcHolD')),      holidayNameSub(d, r=>r.spcHolD>0));
-  set('kRegHolOTHrs', '₱'+fmtWhole(sumF(d,'regHolOTHrs')), d.filter(r=>r.regHolOTHrs>0).length+' records');
-  set('kSpcHolOTHrs', '₱'+fmtWhole(sumF(d,'spcHolOTHrs')), d.filter(r=>r.spcHolOTHrs>0).length+' records');
+  set('kTotalBilled','₱'+fmtWhole2(sumF(d,'totalBilled')),d.length.toLocaleString()+' record-days');
+  set('kBase',       '₱'+fmtWhole2(sumF(d,'base')),        d.length.toLocaleString()+' record-days');
+  set('kOT',         '₱'+fmtWhole2(sumF(d,'otHrs')),   d.filter(r=>r.otHrs>0).length+' w/ OT');
+  set('kRdot',       '₱'+fmtWhole2(sumF(d,'restOT')),  d.filter(r=>r.restOT>0).length+' rest OT');
+  set('kND',         '₱'+fmtWhole2(sumF(d,'ndHrs')),   d.filter(r=>r.ndHrs>0).length+' w/ ND');
+  set('kHolR',       '₱'+fmtWhole2(sumF(d,'regHol')),       holidayNameSub(d, r=>r.regHol>0));
+  set('kHolS',       '₱'+fmtWhole2(sumF(d,'spcHolD')),      holidayNameSub(d, r=>r.spcHolD>0));
+  set('kRegHolOTHrs', '₱'+fmtWhole2(sumF(d,'regHolOTHrs')), d.filter(r=>r.regHolOTHrs>0).length+' records');
+  set('kSpcHolOTHrs', '₱'+fmtWhole2(sumF(d,'spcHolOTHrs')), d.filter(r=>r.spcHolOTHrs>0).length+' records');
   set('kHC',         hc.toLocaleString(),           'Unique employees');
   set('kTardy',      tardyCnt.toLocaleString(),     'avg '+avgLate+' mins late');
   set('kUT',         utCnt.toLocaleString(),        'avg '+avgEarly+' mins early');
@@ -2482,7 +2428,7 @@ function renderUnworkedHolidayKPI(a){
   );
   const total=rows.length*FULL_BASE;
   const uniqEmp=new Set(rows.map(x=>x.name)).size;
-  if(valEl){ valEl.textContent='₱'+fmtWhole(total); autoFitKpiVal(valEl); }
+  if(valEl){ valEl.textContent='₱'+fmtWhole2(total); autoFitKpiVal(valEl); }
   if(subEl) subEl.textContent=rows.length.toLocaleString()+' employee-day'+(rows.length!==1?'s':'')+' · '+uniqEmp+' employee'+(uniqEmp!==1?'s':'')+' (click for details)';
   UNWORKED_HOL_ROWS=rows;
   renderUnworkedHolidayList(rows);
@@ -2556,8 +2502,8 @@ function renderTruePayrollKPI(billedTotal, unworkedTotal){
     return;
   }
   const combined=billedTotal+unworkedTotal;
-  if(valEl){ valEl.textContent='₱'+fmtWhole(combined); autoFitKpiVal(valEl); }
-  if(subEl) subEl.textContent='Billed ₱'+fmtWhole(billedTotal)+' + Unworked Hol ₱'+fmtWhole(unworkedTotal);
+  if(valEl){ valEl.textContent='₱'+fmtWhole2(combined); autoFitKpiVal(valEl); }
+  if(subEl) subEl.textContent='Billed ₱'+fmtWhole2(billedTotal)+' + Unworked Hol ₱'+fmtWhole2(unworkedTotal);
 }
 
 let ATTRITION_PANEL_OPEN=false;
@@ -3874,7 +3820,7 @@ function generateTimesheet(){
 }
 
 /* ═══ TOAST ═══ */
-let toastHideTimer;
+let tt;
 function showUnrosteredList(){
   if(!UNROSTERED_EMPLOYEES.length) return;
   alert('Employees present in the DTR tab but missing from the SCHEDULE tab:\n\n'
@@ -3887,7 +3833,7 @@ function showUnrosteredList(){
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('on');
-  clearTimeout(toastHideTimer);toastHideTimer=setTimeout(()=>t.classList.remove('on'),3200);
+  clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200);
 }
 </script>
 
